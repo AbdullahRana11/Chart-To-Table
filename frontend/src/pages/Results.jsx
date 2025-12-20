@@ -36,7 +36,9 @@ const Results = () => {
     const formData = new FormData();
     formData.append('file', fileToProcess);
 
-    fetch('http://localhost:5000/api/convert', {
+    const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://chart-to-table-production.up.railway.app' : 'http://localhost:5000');
+
+    fetch(`${API_URL}/api/convert`, {
       method: 'POST',
       body: formData,
     })

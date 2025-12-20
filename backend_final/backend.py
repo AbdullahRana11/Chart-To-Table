@@ -19,7 +19,14 @@ except ImportError:
 
 # Configuration
 app = Flask(__name__)
-CORS(app)
+
+# CORS - Allow requests from frontend deployments
+CORS(app, origins=[
+    "https://*.pages.dev",  # Cloudflare Pages (wildcard for any subdomain)
+    "https://*.up.railway.app",  # Railway frontends
+    "http://localhost:5173",  # Local development
+    "http://localhost:3000"   # Alternative local port
+])
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -30,7 +37,11 @@ from datetime import datetime
 import json
 
 # Use SQLite for local development if DATABASE_URL is not set
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///local_extractions.db')
+db_url = os.getenv('DATABASE_URL', 'sqlite:///local_extractions.db')
+# Fix Railway MySQL URL format (mysql:// -> mysql+pymysql://)
+if db_url.startswith('mysql://'):
+    db_url = db_url.replace('mysql://', 'mysql+pymysql://', 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -183,4 +194,7 @@ def convert_chart_csv():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    # Disable debug in production
+    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
