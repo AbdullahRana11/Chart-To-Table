@@ -38,6 +38,13 @@ import json
 
 # Use SQLite for local development if DATABASE_URL is not set
 db_url = os.getenv('DATABASE_URL', 'sqlite:///local_extractions.db')
+
+# Check for API Key
+if not os.getenv("GOOGLE_API_KEY"):
+    logger.error("CRITICAL: GOOGLE_API_KEY environment variable is not set!")
+    # We don't exit here to allow the app to start and health check to pass, 
+    # but extraction will fail.
+
 # Fix Railway MySQL URL format (mysql:// -> mysql+pymysql://)
 if db_url.startswith('mysql://'):
     db_url = db_url.replace('mysql://', 'mysql+pymysql://', 1)

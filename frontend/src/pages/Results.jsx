@@ -44,8 +44,14 @@ const Results = () => {
     })
       .then(async res => {
         if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || 'Extraction failed');
+          const contentType = res.headers.get("content-type");
+          if (contentType && contentType.indexOf("application/json") !== -1) {
+             const errData = await res.json().catch(() => ({}));
+             throw new Error(errData.error || 'Extraction failed');
+          } else {
+             const text = await res.text();
+             throw new Error(`Server Error (${res.status}): ${text.substring(0, 100)}...`);
+          }
         }
         return res.json();
       })
