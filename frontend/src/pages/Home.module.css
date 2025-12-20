@@ -1,0 +1,83 @@
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 4rem;
+}
+
+.hero {
+  padding: 6rem 0 4rem;
+  text-align: center;
+  background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.1) 0%, transparent 50%);
+}
+
+.title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 1.25rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 0 auto 2.5rem;
+}
+
+.ctaGroup {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.btnSecondary {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btnSecondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--text-secondary);
+}
+
+.features {
+  padding: 4rem 0;
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.featureCard {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.iconWrapper {
+  color: var(--accent-primary);
+  background: rgba(56, 189, 248, 0.1);
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  display: inline-flex;
+}
+
+.featureCard h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.featureCard p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
