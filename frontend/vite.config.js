@@ -5,9 +5,9 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    allowedHosts: [
-      'overflowing-purpose-production-2b8e.up.railway.app',
-      'localhost'
-    ]
+    // Allows any subdomain under trycloudflare.com
+    allowedHosts: ['.trycloudflare.com']
   }
-})
+}
+)
+
