@@ -81,6 +81,40 @@ button {
 
 .text-gradient {
   background: linear-gradient(to right, var(--accent-primary), var(--accent-secondary));
+  background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
+
+/* Floating Background */
+.floating-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.floating-shape {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    rgba(56, 189, 248, 0.15),
+    rgba(129, 140, 248, 0.1),
+    transparent
+  );
+  filter: blur(40px);
+  will-change: transform;
+}
+
+.floating-chart {
+  position: absolute;
+  pointer-events: none;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.3));
+}
+

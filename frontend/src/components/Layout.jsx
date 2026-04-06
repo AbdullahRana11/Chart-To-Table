@@ -7,45 +7,8 @@ import styles from './Layout.module.css';
 const Layout = ({ children }) => {
   const location = useLocation();
 
-  // Dynamic background elements
-  const backgroundElements = Array.from({ length: 20 }).map((_, i) => ({
-    id: i,
-    size: Math.random() * 30 + 20, // Larger icons
-    x: Math.random() * 100,
-    duration: Math.random() * 15 + 10, // Slower, smoother falling
-    delay: Math.random() * 5,
-    Icon: [BarChart3, FileText, Upload, Github][Math.floor(Math.random() * 4)] // Random icon
-  }));
-
   return (
     <div className={styles.layout}>
-      {/* Dynamic Background */}
-      <div className={styles.background}>
-        {backgroundElements.map((el) => (
-          <motion.div
-            key={el.id}
-            className={styles.bgElement}
-            style={{
-              left: `${el.x}%`,
-            }}
-            initial={{ top: -50, opacity: 0 }}
-            animate={{ 
-              top: '100vh', 
-              opacity: [0, 0.4, 0], // Higher max opacity for visibility
-              rotate: 360
-            }}
-            transition={{ 
-              duration: el.duration, 
-              repeat: Infinity, 
-              delay: el.delay,
-              ease: "linear"
-            }}
-          >
-            <el.Icon size={el.size} strokeWidth={1.5} />
-          </motion.div>
-        ))}
-      </div>
-
       <header className={styles.header}>
         <div className={`container ${styles.navContainer}`}>
           <Link to="/" className={styles.logo}>
