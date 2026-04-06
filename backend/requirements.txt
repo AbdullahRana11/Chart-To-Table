@@ -1,0 +1,15 @@
+transformers
+torch
+pillow
+opencv-python
+pytesseract
+pandas
+scipy
+pdf2image
+numpy
+requests
+flask
+flask-cors
+peft
+einops
+timm
