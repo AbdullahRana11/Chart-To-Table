@@ -28,7 +28,7 @@ except Exception:
 # -------------------------
 # Configuration
 # -------------------------
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", 'AIzaSyBhUWFOwAy3XxI16NBz18SfgV-WtziV7Qw')
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", 'Paste Your Own API Key')
 GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-flash")
 
 # Initialize Gemini client
