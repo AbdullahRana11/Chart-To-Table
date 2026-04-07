@@ -1,22 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload as UploadIcon, File, X, ArrowRight, AlertCircle } from 'lucide-react';
-import { useApp } from '../context/AppContext';
 import styles from './Upload.module.css';
 
 const Upload = () => {
-  const { setCurrentFile, clearCurrentSession } = useApp();
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
-
-  // Clear previous session when entering upload page
-  useEffect(() => {
-    clearCurrentSession();
-  }, [clearCurrentSession]);
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -50,16 +43,13 @@ const Upload = () => {
       return;
     }
 
-    const fileWithPreview = Object.assign(file, {
+    setFile(Object.assign(file, {
       preview: URL.createObjectURL(file)
-    });
-    setFile(fileWithPreview);
-    setCurrentFile(fileWithPreview);
+    }));
   };
 
   const removeFile = () => {
     setFile(null);
-    setCurrentFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -67,7 +57,7 @@ const Upload = () => {
 
   const handleExtract = () => {
     if (!file) return;
-    // Navigate to results - pass file in state as fallback for context
+    // Simulate extraction process
     navigate('/results', { state: { file } });
   };
 
