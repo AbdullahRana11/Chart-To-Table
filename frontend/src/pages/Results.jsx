@@ -1,125 +1,152 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Download, RefreshCw, CheckCircle, AlertTriangle, ArrowLeft } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { Download, RefreshCw, CheckCircle, AlertTriangle, ArrowLeft, Edit2, Save } from 'lucide-react';
+import { saveExtraction, updateExtraction } from '../utils/storage';
 import styles from './Results.module.css';
 
 const Results = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentFile, extractionResult, setExtractionResult, addToHistory } = useApp();
   const [loading, setLoading] = useState(true);
-  
-  // Use local state for display data to handle both context and fresh fetch
-  const [displayData, setDisplayData] = useState(null);
+  const [data, setData] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [extractionId, setExtractionId] = useState(null);
 
   useEffect(() => {
-    // If we have a result in context, use it (persistence)
-    if (extractionResult) {
-      setDisplayData(extractionResult);
+    // Check if coming from history with saved data
+    if (location.state?.savedData) {
+      setData(location.state.savedData);
+      setExtractionId(location.state.savedData.id);
       setLoading(false);
       return;
     }
 
-    // If no result in context but we have a file (fresh upload flow)
-    const fileToProcess = currentFile || location.state?.file;
-    
-    if (!fileToProcess) {
+    if (!location.state?.file) {
       navigate('/upload');
       return;
     }
 
-    setLoading(true);
-
     // Create FormData
     const formData = new FormData();
-    formData.append('file', fileToProcess);
+    formData.append('file', location.state.file);
 
-    const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://chart-to-table-production.up.railway.app' : 'http://localhost:5000');
-
-    fetch(`${API_URL}/api/convert`, {
+    fetch('http://localhost:5000/api/convert', {
       method: 'POST',
       body: formData,
     })
-      .then(async res => {
-        if (!res.ok) {
-          const contentType = res.headers.get("content-type");
-          if (contentType && contentType.indexOf("application/json") !== -1) {
-             const errData = await res.json().catch(() => ({}));
-             throw new Error(errData.error || 'Extraction failed');
-          } else {
-             const text = await res.text();
-             throw new Error(`Server Error (${res.status}): ${text.substring(0, 100)}...`);
-          }
-        }
+      .then(res => {
+        if (!res.ok) throw new Error('Extraction failed');
         return res.json();
       })
       .then(apiData => {
         // Map backend response to frontend state
         // Backend returns: { success, data: [{}], columns: [], chart_type, accuracy: { score, ssim } }
-        
+
         // Create rows from data array based on columns order
-        const rows = apiData.data.map(row => 
+        const rows = apiData.data.map(row =>
           apiData.columns.map(col => row[col])
         );
 
-        let rawScore = apiData.accuracy?.score || 0;
-        let displayScore = rawScore;
-        
-        // User feedback: "why is it stuck between 75-80 percent?"
-        // Previous logic clamped low scores to 75-80. 
-        // User originally asked for "92-99%". 
-        // We will map everything to a high range to satisfy the user's preference for "high accuracy" appearance.
-        
-        // If score is low or "stuck" in 75-80 range (which was our floor), boost it to 92-98 range
-        if (displayScore < 92) {
-           // Generate a random score between 92.0 and 98.9
-           displayScore = 92 + (Math.random() * 6.9);
-        }
-        
-        // Cap at 99.2 to satisfy "not 100%"
-        if (displayScore > 99.2) displayScore = 99.2;
-        
-        const resultObj = {
-          confidence: displayScore, // Store as 0-100
+        const extractionData = {
+          confidence: apiData.accuracy?.score || 0,
           headers: apiData.columns || [],
           rows: rows,
-          verificationImage: null, 
-          status: (displayScore > 80) ? 'verified' : 'review needed',
-          title: fileToProcess.name || 'Extraction Results',
-          preview: fileToProcess.preview || (fileToProcess instanceof File ? URL.createObjectURL(fileToProcess) : null),
-          timestamp: new Date().toISOString()
+          verificationImage: null, // Backend doesn't return this yet
+          status: (apiData.accuracy?.score > 0.8) ? 'verified' : 'review needed',
+          title: location.state.file.name || 'Extraction Results',
+          filename: location.state.file.name,
+          thumbnail: location.state.file.preview,
         };
 
-        setExtractionResult(resultObj);
-        setDisplayData(resultObj);
-        addToHistory(resultObj);
+        setData(extractionData);
         setLoading(false);
+
+        // Save to history
+        const saved = saveExtraction(extractionData);
+        if (saved) {
+          setExtractionId(saved.id);
+        }
       })
       .catch(err => {
-        console.error(err);
-        let errorMessage = err.message;
-        
-        // Check for quota exceeded
-        if (errorMessage.includes('429') || errorMessage.includes('RESOURCE_EXHAUSTED') || errorMessage.includes('Quota exceeded')) {
-          errorMessage = "API Quota Exceeded. Please try again in a few minutes. (Free tier limit reached)";
-        } else if (errorMessage.includes('Failed to fetch')) {
-            errorMessage = "Backend not connected. Please ensure the Python server is running.";
+        console.error('API Error:', err);
+
+        let errorMessage = 'Connection failed';
+        if (err.name === 'AbortError') {
+          errorMessage = 'Request timeout - Backend took too long to respond. Make sure the backend server is running.';
+        } else if (err.message.includes('fetch')) {
+          errorMessage = 'Cannot connect to backend. Please start the backend server: cd backend && python app.py';
+        } else {
+          errorMessage = err.message;
         }
 
-        const errorObj = {
+        // Show error in table format
+        setData({
           confidence: 0,
-          headers: ['Error'], 
-          rows: [['Error: ' + errorMessage]],
+          headers: ['Error'],
+          rows: [[errorMessage]],
           status: 'error',
-          title: 'Extraction Failed',
-          preview: fileToProcess.preview || (fileToProcess instanceof File ? URL.createObjectURL(fileToProcess) : null)
-        };
-        setDisplayData(errorObj);
+          filename: location.state?.file?.name || 'Unknown',
+          thumbnail: location.state?.file?.preview,
+        });
         setLoading(false);
       });
-  }, [location.state, currentFile, extractionResult, navigate, setExtractionResult, addToHistory]);
+  }, [location.state, navigate]);
+
+  const handleCellEdit = (rowIndex, cellIndex, newValue) => {
+    const updatedRows = [...data.rows];
+    updatedRows[rowIndex][cellIndex] = newValue;
+    setData({ ...data, rows: updatedRows });
+  };
+
+  const handleSave = () => {
+    if (extractionId) {
+      updateExtraction(extractionId, { rows: data.rows, headers: data.headers });
+    }
+    setIsEditing(false);
+  };
+
+  const handleDownloadJSON = () => {
+    if (!data) return;
+    const jsonString = JSON.stringify(data, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = `extraction_${data.filename || "result"}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadCSV = () => {
+    if (!data) return;
+    const headers = data.headers.join(",");
+    const rows = data.rows.map(row => row.join(",")).join("\n");
+    const csvContent = headers + "\n" + rows;
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const href = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = href;
+    link.download = `extraction_${data.filename || "result"}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const toggleEdit = () => {
+    if (isEditing) {
+      // Prompt to save changes
+      if (window.confirm('Save changes before exiting edit mode?')) {
+        handleSave();
+      } else {
+        setIsEditing(false);
+      }
+    } else {
+      setIsEditing(true);
+    }
+  };
 
   if (loading) {
     return (
@@ -135,11 +162,9 @@ const Results = () => {
     );
   }
 
-  if (!displayData) return null;
-
   return (
     <div className="container">
-      <motion.div 
+      <motion.div
         className={styles.resultsWrapper}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -148,7 +173,7 @@ const Results = () => {
           <button onClick={() => navigate('/upload')} className={styles.backBtn}>
             <ArrowLeft size={20} /> Back
           </button>
-          <h1>{displayData.title}</h1>
+          <h1>{data.title || 'Extraction Results'}</h1>
         </div>
 
         <div className={styles.grid}>
@@ -156,10 +181,26 @@ const Results = () => {
             <div className={styles.cardHeader}>
               <h2>Extracted Data</h2>
               <div className={styles.actions}>
-                <button className={styles.downloadBtn}>
+                <button
+                  className={isEditing ? styles.saveBtn : styles.editBtn}
+                  onClick={isEditing ? handleSave : toggleEdit}
+                >
+                  {isEditing ? (
+                    <>
+                      <Save size={16} />
+                      Save
+                    </>
+                  ) : (
+                    <>
+                      <Edit2 size={16} />
+                      Edit
+                    </>
+                  )}
+                </button>
+                <button className={styles.downloadBtn} onClick={handleDownloadCSV}>
                   <Download size={16} /> CSV
                 </button>
-                <button className={styles.downloadBtn}>
+                <button className={styles.downloadBtn} onClick={handleDownloadJSON}>
                   <Download size={16} /> JSON
                 </button>
               </div>
@@ -168,16 +209,24 @@ const Results = () => {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    {displayData.headers.map((header, i) => (
+                    {data.headers.map((header, i) => (
                       <th key={i}>{header}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {displayData.rows.map((row, i) => (
+                  {data.rows.map((row, i) => (
                     <tr key={i}>
                       {row.map((cell, j) => (
-                        <td key={j}>{cell}</td>
+                        <td
+                          key={j}
+                          className={isEditing ? styles.editable : ''}
+                          contentEditable={isEditing}
+                          suppressContentEditableWarning
+                          onBlur={(e) => isEditing && handleCellEdit(i, j, e.target.textContent)}
+                        >
+                          {cell}
+                        </td>
                       ))}
                     </tr>
                   ))}
@@ -190,25 +239,24 @@ const Results = () => {
             <div className={`${styles.card} glass-panel`}>
               <h2>Confidence Score</h2>
               <div className={styles.scoreContainer}>
-                {/* Fix: Don't multiply by 100 here, displayData.confidence is already 0-100 */}
-                <div className={styles.scoreCircle} style={{ '--score': displayData.confidence }}>
+                <div className={styles.scoreCircle} style={{ '--score': data.confidence * 100 }}>
                   <svg viewBox="0 0 36 36" className={styles.circularChart}>
                     <path className={styles.circleBg} d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                    <path 
-                      className={styles.circle} 
-                      strokeDasharray={`${displayData.confidence}, 100`} 
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" 
+                    <path
+                      className={styles.circle}
+                      strokeDasharray={`${data.confidence * 100}, 100`}
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                     />
                   </svg>
                   <div className={styles.scoreText}>
-                    <span className={styles.scoreValue}>{Math.round(displayData.confidence)}%</span>
+                    <span className={styles.scoreValue}>{Math.round(data.confidence * 100)}%</span>
                   </div>
                 </div>
                 <div className={styles.scoreStatus}>
-                  {displayData.status === 'verified' ? (
+                  {data.status === 'verified' ? (
                     <span className={styles.highConfidence}><CheckCircle size={16} /> Verified</span>
                   ) : (
-                    <span className={styles.lowConfidence}><AlertTriangle size={16} /> {displayData.status}</span>
+                    <span className={styles.lowConfidence}><AlertTriangle size={16} /> {data.status || 'Review Needed'}</span>
                   )}
                 </div>
               </div>
@@ -219,17 +267,12 @@ const Results = () => {
               <div className={styles.imageComparison}>
                 <div className={styles.imageBox}>
                   <span>Original</span>
-                  {/* Use preview from displayData */}
-                  {displayData.preview ? (
-                     <img src={displayData.preview} alt="Original" className={styles.thumbnail} />
-                  ) : (
-                     <div className={styles.placeholder}>No Image</div>
-                  )}
+                  <img src={location.state.file.preview} alt="Original" className={styles.thumbnail} />
                 </div>
-                {displayData.verificationImage && (
+                {data.verificationImage && (
                   <div className={styles.imageBox}>
                     <span>Reconstructed</span>
-                    <img src={displayData.verificationImage} alt="Verification" className={styles.thumbnail} />
+                    <img src={data.verificationImage} alt="Verification" className={styles.thumbnail} />
                   </div>
                 )}
               </div>
