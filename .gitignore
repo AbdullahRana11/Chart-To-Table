@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Node/Frontend
+node_modules/
+dist/
+.DS_Store
+
+# Large Model Checkpoints (Do not push to GitHub)
+florence-chart-expert*/
+florence-chart-expert-v2*/
+
+# Dataset & Temp
+png/
+annotations.json
+valid_annotations.json
+temp/
+*.log
+
+# VS Code
+.vscode/
